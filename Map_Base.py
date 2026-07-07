@@ -139,6 +139,14 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 # ===↑色定義↑===
 
+# 敵のステータスデータ（モンスター図鑑のようなもの）
+MONSTER_DATA = {
+    "スライム": {"max_hp": 40, "atk": 10, "weight": 40}, 
+    "ゴブリン": {"max_hp": 60, "atk": 20, "weight": 25},
+    "ミミック": {"max_hp": 100, "atk": 30, "weight": 20},
+    "ゴーレム": {"max_hp": 400, "atk": 30, "weight": 10},
+    "ドラゴン": {"max_hp": 500, "atk": 60, "weight": 5} 
+}
 # ======↑定数定義↑======
 
 
@@ -268,8 +276,8 @@ class Rock(pg.sprite.Sprite):
         引数：マスの中心座標tuple(x, y)
         """
         super().__init__()
-        self.image = pg.Surface((55, 55))  # 現時点仮の岩画像
-        self.image.fill(BLACK)  # 現時点仮の岩
+        self.image = pg.image.load(f"img/rock.png").convert_alpha()   # 現時点仮の岩画像
+        self.image = pg.transform.scale(self.image, (95, 110))
         self.rect = self.image.get_rect(center = coor)  # rect.centerにcoorを設定
 
 
@@ -278,16 +286,29 @@ class Enemy(pg.sprite.Sprite):
     敵に関するもの
     """
 
-    def __init__(self, coor: tuple[int, int]):
+    def __init__(self, coor: tuple[int, int], name=None):
         """
         引数：マスの中心座標tuple(x, y)
         """
         super().__init__()
-        self.image = pg.Surface((40, 40))  # 現時点仮の敵画像
-        self.image.fill(RED)  # 現時点仮の敵
-        self.rect = self.image.get_rect(center = coor)  # rect.centerにcoorを設定
+        if name is None:
+            names = list(MONSTER_DATA.keys())
+            weights = [data["weight"] for data in MONSTER_DATA.values()]
+            name = random.choices(names, weights=weights, k=1)[0]
+        data = MONSTER_DATA[name]
+        # 敵ステータス
+        self.name = name
+        self.max_hp = data["max_hp"]
+        self.hp = self.max_hp
+        self.atk = data["atk"]
+        
+        raw_image = pg.image.load(f"img/{self.name}.png").convert_alpha()
+        self.battle_image = pg.transform.scale(raw_image, (600, 600)) # 戦闘時の画像サイズの変更
+        self.map_image = pg.transform.scale(raw_image, (100, 100)) # 画像サイズの変更
 
-
+        self.image = self.map_image
+        self.rect = self.image.get_rect(center=coor)
+        self.original_coor = coor
 class Player(pg.sprite.Sprite):
     """
     プレイヤーに関するもの
@@ -302,6 +323,12 @@ class Player(pg.sprite.Sprite):
         self.rect = self.image.get_rect(center = coor)  # rect.centerにcoorを設定
         self.game_map = game_map
         self.row, self.col = self.game_map.get_id(coor[0], coor[1])  # プレイヤーのいるマスのidを取得
+        # ステータス======
+        self.name = "勇者"
+        self.max_hp = 200
+        self.hp = 200
+        self.atk = 30
+        #================
 
     def move(self, move_row: int, move_col: int) -> str | None:
         """
@@ -343,6 +370,8 @@ def main():
     # ===↓変数定義↓===
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     clock = pg.time.Clock()
+    bg_image = pg.image.load("img/back1.png").convert_alpha()  # 背景画像
+    map_background = pg.transform.scale(bg_image, (WIDTH, HEIGHT))  # 背景画像を画面サイズに合わせる
     game_map = GameMap(10, 20)  # マップ作成 
     current_map_x = 1  # マップ初期x座標 
     current_map_y = 1  # マップ初期y座標 
@@ -355,6 +384,13 @@ def main():
     start_coor = game_map.get_cell(5, 10)["coor"]  # 初期位置
     player = Player(start_coor, game_map)  # プレイヤー定義
     players = pg.sprite.GroupSingle(player)  # プレイヤー用グループ（単体）
+    game_state = "MAP"
+    battle_phase = "COMMAND"
+    battle_message = ""
+    next_turn = "PLAYER"
+    battle_cursor = 0
+    current_enemy = None
+    font = pg.font.SysFont("msgothic", 40)
     # ===↑変数定義↑===
 
     while True:
@@ -362,49 +398,140 @@ def main():
             if event.type == pg.QUIT: return # 終了判定
 
             # プレイヤー移動処理
-            if event.type == pg.KEYDOWN:
-                move: str | None = None  # マップ移動の詳細を格納する変数
-                if event.key == pg.K_UP:
-                    move = player.move(-1, 0)
-                elif event.key == pg.K_DOWN:
-                    move = player.move(1, 0)
-                elif event.key == pg.K_LEFT:
-                    move = player.move(0, -1)
-                elif event.key == pg.K_RIGHT:
-                    move = player.move(0, 1)
-                # マップ移動処理
-                if move:
-                    if move == "UP" and current_map_y > 0:
-                        current_map_y -= 1
-                        player.row = game_map.y_num - 1  # 下端
-                    elif move == "DOWN" and current_map_y < 2:
-                        current_map_y += 1
-                        player.row = 0  # 上端
-                    elif move == "LEFT" and current_map_x > 0:
-                        current_map_x -= 1
-                        player.col = game_map.x_num - 1  # 右端
-                    elif move == "RIGHT" and current_map_x < 2:
-                        current_map_x += 1
-                        player.col = 0  # 左端
-                    else:
-                        continue
-                    # 新しいマップをロード
-                    game_map.load_map(current_map_y, current_map_x)
-                    enemys.empty()  # 移動前のマップに表示されている敵を削除
-                    # 敵の座標読み込み
-                    for coor in game_map.get_enemy_positions():
-                        enemys.add(Enemy(coor))
-                    # プレイヤーを更新
-                    player.rect.center = game_map.get_cell(player.row, player.col)["coor"]
-                if game_map.check_move(player.row, player.col) == 2:  # 移動した先が敵かの判定
-                    pass  # ここにバトルイベントなどを追加
+            if game_state == "MAP":
+                if event.type == pg.KEYDOWN:
+                    move: str | None = None  # マップ移動の詳細を格納する変数
+                    if event.key == pg.K_UP:
+                        move = player.move(-1, 0)
+                    elif event.key == pg.K_DOWN:
+                        move = player.move(1, 0)
+                    elif event.key == pg.K_LEFT:
+                        move = player.move(0, -1)
+                    elif event.key == pg.K_RIGHT:
+                        move = player.move(0, 1)
+                    # マップ移動処理
+                    if move:
+                        if move == "UP" and current_map_y > 0:
+                            current_map_y -= 1
+                            player.row = game_map.y_num - 1  # 下端
+                        elif move == "DOWN" and current_map_y < 2:
+                            current_map_y += 1
+                            player.row = 0  # 上端
+                        elif move == "LEFT" and current_map_x > 0:
+                            current_map_x -= 1
+                            player.col = game_map.x_num - 1  # 右端
+                        elif move == "RIGHT" and current_map_x < 2:
+                            current_map_x += 1
+                            player.col = 0  # 左端
+                        else:
+                            continue
+                        # 新しいマップをロード
+                        game_map.load_map(current_map_y, current_map_x)
+                        enemys.empty()  # 移動前のマップに表示されている敵を削除
+                        # 敵の座標読み込み
+                        for coor in game_map.get_enemy_positions():
+                            enemys.add(Enemy(coor))
+                        # プレイヤーを更新
+                        player.rect.center = game_map.get_cell(player.row, player.col)["coor"]
+                    if game_map.check_move(player.row, player.col) == 2:  # 移動した先が敵かの判定
+                        
+                        # ここにバトルイベントなどを追加
+                        game_state = "BATTLE"
+                        battle_phase = "COMMAND"
+                        # 現在戦う敵を取得
+                        current_enemy = pg.sprite.spritecollideany(player, enemys)
+                        if current_enemy:
+                            current_enemy.image = current_enemy.battle_image
+                            current_enemy.rect = current_enemy.image.get_rect(center=(640, 300))
+            elif game_state == "BATTLE":
+                if event.type == pg.KEYDOWN:
+                    # 1. コマンド選択フェーズ
+                    if battle_phase == "COMMAND":
+                        if event.key == pg.K_UP: battle_cursor = 0
+                        elif event.key == pg.K_DOWN: battle_cursor = 1
+                        elif event.key == pg.K_RETURN:
+                            if battle_cursor == 0: # たたかう
+                                current_enemy.image = current_enemy.battle_image
+                                current_enemy.rect = current_enemy.image.get_rect(center=(640, 300))
+                                # プレイヤー攻撃計算
+                                is_crit = random.random() < 0.08
+                                dmg = int(player.atk * random.uniform(0.9, 1.1) * (1.5 if is_crit else 1.0))
+                                current_enemy.hp = max(0, current_enemy.hp - dmg)
+                                battle_message = f"クリティカル！" if is_crit else f"{player.name}の攻撃！"
+                                battle_message += f" {dmg}のダメージ！"
+                                battle_phase = "MESSAGE"
+                                next_turn = "WIN" if current_enemy.hp <= 0 else "ENEMY"
+                            else: # にげる
+                                battle_message = "無事に逃げ切った！"
+                                battle_phase = "MESSAGE"
+                                next_turn = "ESCAPE"
 
-        screen.fill(WHITE)  # 背景仮(一番最初に描画)
-        game_map.update_line(screen)  # 枠線表示（デバッグ用）
+                    # 2. メッセージ送りフェーズ
+                    elif battle_phase == "MESSAGE":
+                        if event.key == pg.K_RETURN:
+                            if next_turn == "ENEMY":
+                                # 敵の攻撃計算
+                                is_crit = random.random() < 0.08
+                                dmg = int(current_enemy.atk * random.uniform(0.9, 1.1) * (1.5 if is_crit else 1.0))
+                                player.hp = max(0, player.hp - dmg)
+                                battle_message = f"クリティカル！" if is_crit else f"{current_enemy.name}の攻撃！"
+                                battle_message += f" {dmg}のダメージ！"
+                                next_turn = "LOSE" if player.hp <= 0 else "PLAYER"
+                            elif next_turn == "PLAYER":
+                                battle_phase = "COMMAND"
+                            elif next_turn == "WIN":
+                                row, col = game_map.get_id(current_enemy.original_coor[0], current_enemy.original_coor[1])
+                                game_map.map_data[row][col]["type"] = 0  # 敵を倒したのでマスのtypeを0に変更
+                                game_state = "MAP"
+                                current_enemy.kill()
+                            elif next_turn == "ESCAPE":
+                                current_enemy.image = current_enemy.map_image
+                                current_enemy.rect = current_enemy.image.get_rect(center=current_enemy.original_coor)
+                                game_state = "MAP"
+                            elif next_turn == "LOSE":
+                                print("GAME OVER"); return
 
-        game_map.update(screen)  # 岩を描画
-        enemys.draw(screen)  # 敵を描画
-        players.draw(screen)  # プレイヤーを描画
+        # --- 描画処理 ---
+        screen.fill(BLACK if game_state == "BATTLE" else WHITE) # バトル中は黒背景に
+
+        if game_state == "MAP":
+            screen.blit(map_background, (0, 0))
+            game_map.update_line(screen)  # 枠線表示（デバッグ用）
+            game_map.update(screen)  # 岩を描画
+            enemys.draw(screen)  # 敵を描画
+            players.draw(screen)  # プレイヤーを描画
+            
+        elif game_state == "BATTLE":
+            # バトルUIの描画
+            if current_enemy:
+                screen.blit(current_enemy.image, current_enemy.rect)
+            
+            if current_enemy:
+                enemy_name_txt = font.render(f"{current_enemy.name}", True, WHITE)
+                enemy_hp_txt = font.render(f"HP: {current_enemy.hp}/{current_enemy.max_hp}", True, WHITE)
+                screen.blit(enemy_name_txt, (800, 100))
+                screen.blit(enemy_hp_txt, (800, 150))
+
+            # プレイヤーの情報を表示
+            pg.draw.rect(screen, WHITE, (50, 500, 1140, 150), 3)
+            player_hp_txt = font.render(f"{player.name} HP: {player.hp}/{player.max_hp}", True, WHITE)
+            screen.blit(player_hp_txt, (100, 520))
+            
+            
+            if battle_phase == "COMMAND":
+                screen.blit(font.render("たたかう", True, WHITE), (800, 520))
+                screen.blit(font.render("にげる", True, WHITE), (800, 580))
+                # カーソル
+                y = 520 if battle_cursor == 0 else 580
+                pg.draw.polygon(screen, WHITE, [(750, y), (750, y+30), (780, y+15)])
+            elif battle_phase == "MESSAGE":
+                # メッセージの描画
+                msg_txt = font.render(battle_message, True, WHITE)
+                screen.blit(msg_txt, (100, 580))
+                # メッセージ送り案内
+                guide_txt = font.render("Press Enter", True, (200, 200, 200))
+                screen.blit(guide_txt, (1000, 630))
+
 
 
         pg.display.update()
