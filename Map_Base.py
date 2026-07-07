@@ -15,7 +15,8 @@ FPS = 60  # フレーム数
 
 # 移動範囲制限（ボス戦用）
 MARGIN = 10  # ボス専用
-MOVE_SPEED = 5
+MOVE_SPEED = 5  # ボス専用
+MAX_LIFE = 20  # 体力数指定, ボス専用
 
 # マップのデータ（シード値）を格納しているもの（0：道、移動可能, 1：障害物、移動不可, 2：敵, 3：ラスボス）
 SEEDS =[
@@ -356,6 +357,120 @@ class BossOutline:
         引数：screen（画面Surface）
         """
         screen.blit(self.img, self.rct)
+
+
+class BossLife(pg.sprite.Sprite):
+    """
+    体力関係のもの
+    ボス戦に使用する
+    """
+    # 体力表示座標
+    x_player_life = WIDTH // 50
+    x_enemy_life = WIDTH - (WIDTH // 50) - 1
+    y_step = HEIGHT // MAX_LIFE
+    life_coor = []
+    for i in range(MAX_LIFE):
+        life_coor.append([
+            [x_player_life, i * y_step + (y_step // 2)],
+            [x_enemy_life, i * y_step + (y_step // 2)],
+        ])
+
+    def __init__(self, coor: list[int, int]):
+        """
+        引数：敵、味方の座標 list[int, int]
+        """
+        super().__init__()
+        self.image = pg.image.load("img/heart.png").convert_alpha()
+        self.image = pg.transform.scale(self.image, (32, 32))
+        self.rect = self.image.get_rect()
+        self.rect.center = coor
+
+
+class BossPlayer(pg.sprite.Sprite):
+    """
+    プレイヤー関係のもの
+    ボス戦に使用する
+    """
+    MOVE_PLAYER = {
+    pg.K_UP : (0, -MOVE_SPEED),
+    pg.K_DOWN : (0, +MOVE_SPEED),
+    pg.K_LEFT : (-MOVE_SPEED, 0),
+    pg.K_RIGHT : (+MOVE_SPEED, 0),
+    pg.K_w : (0, -MOVE_SPEED),
+    pg.K_s : (0, +MOVE_SPEED),
+    pg.K_a : (-MOVE_SPEED, 0),
+    pg.K_d : (+MOVE_SPEED, 0),
+    }
+
+    def __init__(self, outline_left: pg.Rect, outline_right: pg.Rect):
+        """
+        引数：左側境界線Rect, 右側境界線Rect
+        """
+        super().__init__()
+        self.image = pg.image.load("img/player.png").convert_alpha()
+        self.image = pg.transform.scale(self.image, (32, 32))
+        self.rect = self.image.get_rect()
+        self.rect.center = [WIDTH // 4, HEIGHT // 2]
+        self.radius = 16  # 当たり判定用半径
+        self.outline_left = outline_left
+        self.outline_right = outline_right
+
+    def update(self, key_lst: list[bool]):
+        """
+        プレイヤーを描画するもの
+        引数：key_list
+        """
+        next_coor = list(self.rect.center)
+        for key, mv in self.MOVE_PLAYER.items():
+            if key_lst[key]:
+                next_coor[0] += mv[0]
+                next_coor[1] += mv[1]
+        beside, vertical = check_range(self.outline_left, self.outline_right, next_coor)
+        if beside: 
+            self.rect.centerx = next_coor[0]
+        if vertical:
+            self.rect.centery = next_coor[1]
+
+
+class Enemy(pygame.sprite.Sprite):
+    """
+    敵関係のもの
+    """
+    MOVE_ENEMY = {
+        "up" : (0, -(MOVE_SPEED // 2)),
+        "down" : (0, MOVE_SPEED // 2),
+        "left" : (-(MOVE_SPEED // 2), 0),
+        "right" : (0, MOVE_SPEED // 2),
+    }
+    
+    def __init__(self, outline_left: pygame.Rect, outline_right: pygame.Rect):
+        """
+        引数：左側境界線Rect, 右側境界線Rect
+        """
+        super().__init__()
+        self.image = pygame.image.load("img/enemy.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (32, 32))
+        self.rect = self.image.get_rect()
+        self.rect.center = [(X_WINDOW // 4)*3, Y_WINDOW // 2]
+        self.radius = 16  # 当たり判定用半径
+        self.outline_left = outline_left
+        self.outline_right = outline_right
+        self.vy = self.MOVE_ENEMY["down"][1]
+
+    def update(self) -> tuple[bool, bool]:
+        """
+        敵を描画するもの
+        戻り値：tuple(bool, bool) (横、縦)
+        """
+        next_coor = list(self.rect.center)
+        next_coor[1] += self.vy
+        beside, vertical = check_range(self.outline_left, self.outline_right, next_coor)
+        if vertical:
+            self.rect.centery = next_coor[1]
+        else:
+            self.vy *= -1
+        return beside, vertical
+
     
 # ===↑class定義↑===
 
