@@ -425,14 +425,14 @@ class BossPlayer(pg.sprite.Sprite):
     ボス戦に使用する
     """
     MOVE_PLAYER = {
-    pg.K_UP : (0, -MOVE_SPEED),
-    pg.K_DOWN : (0, +MOVE_SPEED),
-    pg.K_LEFT : (-MOVE_SPEED, 0),
-    pg.K_RIGHT : (+MOVE_SPEED, 0),
-    pg.K_w : (0, -MOVE_SPEED),
-    pg.K_s : (0, +MOVE_SPEED),
-    pg.K_a : (-MOVE_SPEED, 0),
-    pg.K_d : (+MOVE_SPEED, 0),
+        pg.K_UP : (0, -MOVE_SPEED),
+        pg.K_DOWN : (0, +MOVE_SPEED),
+        pg.K_LEFT : (-MOVE_SPEED, 0),
+        pg.K_RIGHT : (+MOVE_SPEED, 0),
+        pg.K_w : (0, -MOVE_SPEED),
+        pg.K_s : (0, +MOVE_SPEED),
+        pg.K_a : (-MOVE_SPEED, 0),
+        pg.K_d : (+MOVE_SPEED, 0),
     }
 
     def __init__(self, outline_left: pg.Rect, outline_right: pg.Rect):
@@ -508,13 +508,13 @@ class BossEnemy(pg.sprite.Sprite):
 
 class BossBaseBullet(pg.sprite.Sprite):
     """
-    弾幕関係のもと
+    弾幕関係のもの
     ボス戦に使用する
     """
 
     def __init__(self, rect: pg.Rect, color: tuple):
         """
-        引数：発射地Rect, color
+        引数：発射地Rect, 色
         """
         super().__init__()
         self.image = pg.Surface((10, 10))
@@ -547,7 +547,7 @@ class BossDiffusionBullet(BossBaseBullet):
 
     def __init__(self, rect: pg.Rect, speed: float, diff_num: int, index: int, color: tuple):
         """
-        引数：敵Rect, 速さ（float）, 個数（int）, 弾の番号（int）, color
+        引数：発射元Rect, 速さ（float）, 個数（int）, 弾の番号（int）, 色
         """
         super().__init__(rect, color)
         degree = (360.0 / diff_num) * index
@@ -594,7 +594,7 @@ class BossCurveBullet(BossBaseBullet):
 
     def __init__(self, target_rect: pg.Rect, rect: pg.Rect, speed: float, color: tuple):
         """
-        引数：プレイヤーRect, 敵Rect, 速さ（float）, color
+        引数：プレイヤーRect, 敵Rect, 速さ（float）, 色
         """
         super().__init__(rect, color)
         dx = target_rect.centerx - rect.centerx
@@ -604,10 +604,10 @@ class BossCurveBullet(BossBaseBullet):
         self.max_speed = speed + 5  # 速度上限
         self.accel = 0.1  # 1フレームあたりの加速度
         if random.random() <= 0.5:
-            start_error = 45  # 20度上の誤差
+            start_error = 45  # 45度上の誤差
             self.curve_speed = -1  # 毎フレームごとに曲げていく値
         else:
-            start_error = -45  # 20度下の誤差
+            start_error = -45  # 45度下の誤差
             self.curve_speed = 1  # 毎フレームごとに曲げていく値
         self.rad = self.base_rad + math.radians(start_error)
         self.vx = self.current_speed * math.cos(self.rad)
@@ -637,7 +637,7 @@ class BossLinearBullet(BossBaseBullet):
 
     def __init__(self, target_rect: pg.Rect, rect: pg.Rect, speed: float, color: tuple):
         """
-        引数：プレイヤーRect, 敵Rect, 速さ（float）, color
+        引数：プレイヤーRect, 敵Rect, 速さ（float）, 色
         """
         super().__init__(rect, color)
         dx = target_rect.centerx - rect.centerx
@@ -661,11 +661,12 @@ class BossShotgunBullet(BossBaseBullet):
     ボス戦に使用する
     """
 
-    def __init__(self, rect: pg.Rect, speed: float, bullet_group: pg.sprite.Group, color: tuple):
+    def __init__(self, rect: pg.Rect, speed: float, bullet_group: pg.sprite.Group, color: tuple, snd: pg.mixer.Sound):
         """
-        引数：敵Rect, 速さ（float, 敵の弾幕グループ（pygame.sprite.Group）
+        引数：敵Rect, 速さ（float）, 敵の弾幕グループ（pygame.sprite.Group）, 色, 弾の効果音
         """
         super().__init__(rect, color)
+        self.snd = snd  # 効果音定義
         self.bullet_group = bullet_group
         self.speed = speed
         self.target_x = WIDTH // 2
@@ -693,6 +694,7 @@ class BossShotgunBullet(BossBaseBullet):
                 diffusion_bullet = BossDiffusionBullet(shot_rect, 4, diff_num, i, BLUE)
                 self.bullet_group.add(diffusion_bullet)
             self.kill()
+            self.snd.play()  # 効果音再生
             return
 
         self.exact_x += self.vx * breke_num
@@ -706,11 +708,13 @@ class BossPreviewBullet(BossBaseBullet):
     ボス戦に使用する
     """
 
-    def __init__(self, player_rect: pg.Rect, speed: float, color: tuple):
+    def __init__(self, player_rect: pg.Rect, speed: float, color: tuple, line_snd: pg.mixer.Sound, bullet_snd: pg.mixer.Sound):
         """
-        引数：プレイヤーの中心座標, 速さ
+        引数：プレイヤーの中心座標, 速さ, 色, 予告線効果音, 弾の効果音
         """
 
+        self.line_snd = line_snd  # 効果音定義（予告線）
+        self.bullet_snd = bullet_snd  # 効果音定義（弾）
         start_x = player_rect[0] + random.randint(-200, 200)
         self.start_pos = (start_x, -20)
         dummy_rect = pg.Rect(start_x, -20, 10, 10)
@@ -753,6 +757,7 @@ class BossPreviewBullet(BossBaseBullet):
     def update(self):
         self.tmr += 1
         if self.tmr == self.preview_time:
+            self.bullet_snd.play()  # 効果音再生
             self.vx = self.preview_vx
             self.vy = self.preview_vy
 
@@ -769,6 +774,8 @@ class BossPreviewBullet(BossBaseBullet):
         limit_time = self.preview_time - 20
         if self.tmr < limit_time:
             cycle = limit_time // 3
+            if self.tmr % cycle == 0:
+                self.line_snd.play()  # 効果音再生
             if (self.tmr % cycle) < (cycle // 2):
                 pg.draw.line(screen, GRAY, self.start_pos, self.line_end, 1)
     
@@ -912,6 +919,15 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
     ボス戦の弾幕ゲーを処理する関数
     引数：画像Surface, pg.time.Clock
     """
+    pg.mixer.music.load("sound/boss_bgm.wav")  # BGM定義
+    pg.mixer.music.play(loops = -1)  # BGMループ
+    linear_bullet_snd = pg.mixer.Sound("sound/boss_linear_bullet.wav")  # 効果音定義
+    curve_bullet_snd = pg.mixer.Sound("sound/boss_curve_bullet.wav")  # 効果音定義
+    diffusion_bullet_snd = pg.mixer.Sound("sound/boss_diffusion_bullet.wav")  # 効果音定義
+    shotgun_bullet_snd = pg.mixer.Sound("sound/boss_shotgun_bullet.wav")  # 効果音定義
+    player_bullet_snd = pg.mixer.Sound("sound/boss_player_bullet.wav")  # 効果音定義
+    preview_line_snd = pg.mixer.Sound("sound/boss_linear_bullet.wav")  # 効果音定義（予告線）
+    preview_bullet_snd = pg.mixer.Sound("sound/boss_preview_bullet.wav")  # 効果音定義
     outline_left = BossOutline(x_left_outline)  # 左側境界線
     outline_right = BossOutline(x_right_outline)  # 右側境界線
     # 敵
@@ -957,17 +973,18 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
         if space_judge:  # プレイヤーがスペースを押したら攻撃弾を発射
             player_bullet = BossPlayerBullet(player_rct, 10)
             player_bullets.add(player_bullet)
+            player_bullet_snd.play()  # 効果音再生
             space_judge = False
         player_bullets.update()
         # 弾処理(敵)
         # 予告弾
         if tmr % 360 == 0:
             for _ in range(7):
-                preview_bullet = BossPreviewBullet(player_rct.center, 50, RED)
+                preview_bullet = BossPreviewBullet(player_rct.center, 50, RED, preview_line_snd, preview_bullet_snd)
                 enemy_bullets.add(preview_bullet)
         # 散弾
         if tmr % 300 == 0:
-            shotgun_bullet = BossShotgunBullet(enemy_rct, 5, enemy_bullets, BLUE)
+            shotgun_bullet = BossShotgunBullet(enemy_rct, 5, enemy_bullets, BLUE, shotgun_bullet_snd)
             enemy_bullets.add(shotgun_bullet)
         # 拡散弾
         if tmr % 120 == 0:
@@ -975,13 +992,16 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             for i in range(diff_num):
                 diffusion_bullet = BossDiffusionBullet(enemy_rct, 3, diff_num, i, GOLD)
                 enemy_bullets.add(diffusion_bullet)
+            diffusion_bullet_snd.play()  # 効果音再生
         # 直線弾
         if tmr % 90 in [0, 5, 10]:  # 三連で発射
             linear_bullet = BossLinearBullet(player_rct, enemy_rct, 4, NEON_RED)
+            linear_bullet_snd.play()  # 効果音再生
             enemy_bullets.add(linear_bullet)
         # 曲線弾
         if tmr % 60 in [0, 5, 10]:  # 三連で発射
             curve_bullet = BossCurveBullet(player_rct, enemy_rct, 6, NEON_PINK)
+            curve_bullet_snd.play()  # 効果音再生
             enemy_bullets.add(curve_bullet)
         enemy_bullets.update()
         player_bullets.draw(screen)
@@ -994,6 +1014,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             if len(player_lifes) > 0:
                 player_lifes.sprites()[0].kill()
             if len(player_lifes) == 0:  # 負け
+                pg.mixer.music.stop()  # BGMストップ
                 game_over(screen)  # ゲームオーバー画面表示
                 break
         # ダメージ処理(敵)
@@ -1001,6 +1022,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             if len(enemy_lifes) > 0:
                 enemy_lifes.sprites()[0].kill()
             if len(enemy_lifes) == 0:  # 勝ち
+                pg.mixer.music.stop()  # BGMストップ
                 game_clear(screen)  # ゲームクリア画面表示
                 break
         # 体力処理
