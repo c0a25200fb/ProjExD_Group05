@@ -80,7 +80,7 @@ SEEDS =[
             [1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1],
             [1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
             [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1],
             [1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1],
             [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
@@ -382,8 +382,7 @@ class BossOutline:
         self.img = pg.Surface((5, HEIGHT))
         self.img.set_colorkey(BLACK)
         pg.draw.line(self.img, MAGENTA, (5 // 2, 0), (5 // 2, HEIGHT))
-        self.rct = self.img.get_rect()
-        self.rct.center = [x, HEIGHT // 2]
+        self.rct = self.img.get_rect(center = (x, HEIGHT // 2))
     
     def update(self, screen: pg.Surface):
         """
@@ -399,9 +398,9 @@ class BossLife(pg.sprite.Sprite):
     ボス戦に使用する
     """
     # 体力表示座標
-    x_player_life = WIDTH // 50
-    x_enemy_life = WIDTH - (WIDTH // 50) - 1
-    y_step = HEIGHT // MAX_LIFE
+    x_player_life = WIDTH // 50  # プレイヤーの体力を表示するx座標
+    x_enemy_life = WIDTH - (WIDTH // 50) - 1  # 敵の体力を表示するx座標
+    y_step = HEIGHT // MAX_LIFE  # 体力を均等に配置するための縦スペースを計算
     life_coor = []
     for i in range(MAX_LIFE):
         life_coor.append([
@@ -409,9 +408,9 @@ class BossLife(pg.sprite.Sprite):
             [x_enemy_life, i * y_step + (y_step // 2)],
         ])
 
-    def __init__(self, coor: list[int, int]):
+    def __init__(self, coor: tuple[int, int]):
         """
-        引数：敵、味方の座標 list[int, int]
+        引数：敵、味方の座標 tuple[int, int]
         """
         super().__init__()
         self.image = pg.image.load("img/heart.png").convert_alpha()
@@ -442,15 +441,14 @@ class BossPlayer(pg.sprite.Sprite):
         super().__init__()
         self.image = pg.image.load("img/player.png").convert_alpha()
         self.image = pg.transform.scale(self.image, (32, 32))
-        self.rect = self.image.get_rect()
-        self.rect.center = [WIDTH // 4, HEIGHT // 2]
+        self.rect = self.image.get_rect(center = (WIDTH // 4, HEIGHT // 2))
         self.radius = 16  # 当たり判定用半径
         self.outline_left = outline_left
         self.outline_right = outline_right
 
     def update(self, key_lst: list[bool]):
         """
-        プレイヤーを描画するもの
+        プレイヤーの移動座標を更新するもの
         引数：key_list
         """
         next_coor = list(self.rect.center)
@@ -459,7 +457,8 @@ class BossPlayer(pg.sprite.Sprite):
                 next_coor[0] += mv[0]
                 next_coor[1] += mv[1]
         beside, vertical = boss_check_range(self.outline_left, self.outline_right, next_coor)
-        if beside: 
+        # 移動可能かの判定
+        if beside:
             self.rect.centerx = next_coor[0]
         if vertical:
             self.rect.centery = next_coor[1]
@@ -474,7 +473,7 @@ class BossEnemy(pg.sprite.Sprite):
         "up" : (0, -(MOVE_SPEED // 2)),
         "down" : (0, MOVE_SPEED // 2),
         "left" : (-(MOVE_SPEED // 2), 0),
-        "right" : (0, MOVE_SPEED // 2),
+        "right" : (MOVE_SPEED // 2, 0),
     }
     
     def __init__(self, outline_left: pg.Rect, outline_right: pg.Rect):
@@ -484,8 +483,7 @@ class BossEnemy(pg.sprite.Sprite):
         super().__init__()
         self.image = pg.image.load("img/enemy.png").convert_alpha()
         self.image = pg.transform.scale(self.image, (32, 32))
-        self.rect = self.image.get_rect()
-        self.rect.center = [(WIDTH // 4)*3, HEIGHT // 2]
+        self.rect = self.image.get_rect(center = ((WIDTH // 4)*3, HEIGHT // 2))
         self.radius = 16  # 当たり判定用半径
         self.outline_left = outline_left
         self.outline_right = outline_right
@@ -499,11 +497,12 @@ class BossEnemy(pg.sprite.Sprite):
         next_coor = list(self.rect.center)
         next_coor[1] += self.vy
         beside, vertical = boss_check_range(self.outline_left, self.outline_right, next_coor)
+        # 画面端で反転
         if vertical:
             self.rect.centery = next_coor[1]
         else:
             self.vy *= -1
-        return beside, vertical
+        return (beside, vertical)
     
 
 class BossBaseBullet(pg.sprite.Sprite):
@@ -520,8 +519,7 @@ class BossBaseBullet(pg.sprite.Sprite):
         self.image = pg.Surface((10, 10))
         self.image.set_colorkey(BLACK)
         pg.draw.circle(self.image, color, (5, 5), 5)
-        self.rect = self.image.get_rect()
-        self.rect.center = rect.center
+        self.rect = self.image.get_rect(center = rect.center)
         self.radius = 5  # 当たり判定用半径
         # 小数の計算結果をストックする
         self.exact_x = float(self.rect.centerx)
@@ -550,16 +548,16 @@ class BossDiffusionBullet(BossBaseBullet):
         引数：発射元Rect, 速さ（float）, 個数（int）, 弾の番号（int）, 色
         """
         super().__init__(rect, color)
-        degree = (360.0 / diff_num) * index
-        self.vx = speed * math.cos(math.radians(degree))
-        self.vy = speed * math.sin(math.radians(degree))
+        degree = (360.0 / diff_num) * index  # 弾ごとの角度を計算
+        self.vx = speed * math.cos(math.radians(degree))  # x方向の速度を計算
+        self.vy = speed * math.sin(math.radians(degree))  # y方向の速度を計算
 
     def update(self):
         """
         弾幕の座標の計算をして、親のupdateを呼ぶ
         """
-        self.exact_x += self.vx
-        self.exact_y += self.vy
+        self.exact_x += self.vx  # x座標に加算
+        self.exact_y += self.vy  # y座標に加算
         super().update()
 
 
@@ -581,8 +579,8 @@ class BossPlayerBullet(BossBaseBullet):
         """
         弾幕の座標の計算をして、親のupdateを呼ぶ
         """
-        self.exact_x += self.vx
-        self.exact_y += self.vy
+        self.exact_x += self.vx  # x座標に加算
+        self.exact_y += self.vy  # y座標に加算
         super().update()
 
 
@@ -599,7 +597,7 @@ class BossCurveBullet(BossBaseBullet):
         super().__init__(rect, color)
         dx = target_rect.centerx - rect.centerx
         dy = target_rect.centery - rect.centery
-        self.base_rad = math.atan2(dy, dx)
+        self.base_rad = math.atan2(dy, dx)  # プレイヤー方向への角度を計算
         self.current_speed = speed  # 初期速度
         self.max_speed = speed + 5  # 速度上限
         self.accel = 0.1  # 1フレームあたりの加速度
@@ -609,23 +607,23 @@ class BossCurveBullet(BossBaseBullet):
         else:
             start_error = -45  # 45度下の誤差
             self.curve_speed = 1  # 毎フレームごとに曲げていく値
-        self.rad = self.base_rad + math.radians(start_error)
-        self.vx = self.current_speed * math.cos(self.rad)
-        self.vy = self.current_speed * math.sin(self.rad)
+        self.rad = self.base_rad + math.radians(start_error)  # 角度に誤差を付ける
+        self.vx = self.current_speed * math.cos(self.rad)  # x方向の速度を計算
+        self.vy = self.current_speed * math.sin(self.rad)  # y方向の速度を計算
 
     def update(self):
         """
         弾幕の座標の計算をして、親のupdateを呼ぶ
         """
-        if self.current_speed < self.max_speed:
+        if self.current_speed < self.max_speed:  # 速度上限まで毎フレーム加速
             self.current_speed += self.accel
-            if self.current_speed > self.max_speed:
+            if self.current_speed > self.max_speed:  # 速度上限を超えたら速度上限に速度を固定
                 self.current_speed = self.max_speed
-        self.rad += math.radians(self.curve_speed)
-        self.vx = self.current_speed * math.cos(self.rad)
-        self.vy = self.current_speed * math.sin(self.rad)
-        self.exact_x += self.vx
-        self.exact_y += self.vy
+        self.rad += math.radians(self.curve_speed)  # 角度を更新
+        self.vx = self.current_speed * math.cos(self.rad)  # x方向の速度の更新
+        self.vy = self.current_speed * math.sin(self.rad)  # y方向の速度の更新
+        self.exact_x += self.vx  # x座標に加算
+        self.exact_y += self.vy  # y座標に加算
         super().update()
 
 
@@ -642,16 +640,16 @@ class BossLinearBullet(BossBaseBullet):
         super().__init__(rect, color)
         dx = target_rect.centerx - rect.centerx
         dy = target_rect.centery - rect.centery
-        rad = math.atan2(dy, dx)
-        self.vx = speed * math.cos(rad)
-        self.vy = speed * math.sin(rad)  
+        rad = math.atan2(dy, dx)  # プレイヤー方向への角度を計算
+        self.vx = speed * math.cos(rad)  # x方向の速度を計算
+        self.vy = speed * math.sin(rad)  # y方向の速度を計算
 
     def update(self):
         """
         弾幕の座標の計算をして、親のupdateを呼ぶ
         """
-        self.exact_x += self.vx
-        self.exact_y += self.vy
+        self.exact_x += self.vx  # x座標に加算
+        self.exact_y += self.vy  # y座標に加算
         super().update()
 
 
@@ -673,10 +671,10 @@ class BossShotgunBullet(BossBaseBullet):
         self.target_y = HEIGHT // 2
         dx = self.target_x - rect.centerx
         dy = self.target_y - rect.centery
-        self.dis = math.hypot(dx, dy)
-        rad = math.atan2(dy, dx)
-        self.vx = speed * math.cos(rad)
-        self.vy = speed * math.sin(rad)
+        self.dis = math.hypot(dx, dy)  # 画面中心までの初期距離を計算
+        rad = math.atan2(dy, dx)  # 画面中心への角度を計算
+        self.vx = speed * math.cos(rad)  # x方向の速度を計算
+        self.vy = speed * math.sin(rad)  # y方向の速度を計算
 
     def update(self):
         """
@@ -684,7 +682,7 @@ class BossShotgunBullet(BossBaseBullet):
         """
         # 現時点の位置と中心までの距離を計算
         dist = math.hypot(self.target_x - self.exact_x, self.target_y - self.exact_y)
-        breke_num = dist / self.dis
+        breke_num = dist / self.dis  # 速度の減衰率の計算
         # 中心に達したか判定
         if dist <= self.speed:
             diff_num = 24  # 散弾の数
@@ -693,12 +691,12 @@ class BossShotgunBullet(BossBaseBullet):
             for i in range(diff_num):
                 diffusion_bullet = BossDiffusionBullet(shot_rect, 4, diff_num, i, BLUE)
                 self.bullet_group.add(diffusion_bullet)
-            self.kill()
+            self.kill()  # 大元を削除
             self.snd.play()  # 効果音再生
             return
 
-        self.exact_x += self.vx * breke_num
-        self.exact_y += self.vy * breke_num
+        self.exact_x += self.vx * breke_num  # x座標に加算
+        self.exact_y += self.vy * breke_num  # y座標に加算
         super().update()
 
     
@@ -716,33 +714,34 @@ class BossPreviewBullet(BossBaseBullet):
         self.line_snd = line_snd  # 効果音定義（予告線）
         self.bullet_snd = bullet_snd  # 効果音定義（弾）
         self.sound_judge = sound_judge
-        start_x = player_rect[0] + random.randint(-200, 200)
-        self.start_pos = (start_x, -20)
-        dummy_rect = pg.Rect(start_x, -20, 10, 10)
-        super().__init__(dummy_rect, color)
-        self.radius = 5
-        target_pos = (player_rect[0] + random.randint(-200, 200), player_rect[1])
+        start_x = player_rect[0] + random.randint(-200, 200)  # プレイヤーのx座標を基準に発射位置を決定
+        self.start_pos = (start_x, -20)  # 発射位置
+        initial_rect = pg.Rect(start_x, -20, 10, 10)  # 親クラス初期化用
+        super().__init__(initial_rect, color)
+        self.radius = 5  # 当たり判定
+        target_pos = (player_rect[0] + random.randint(-200, 200), player_rect[1])  # プレイヤー周辺のランダムな位置を目標にする
         dx = target_pos[0] - self.start_pos[0]
         dy = target_pos[1] - self.start_pos[1]
-        dist = math.hypot(dx, dy)
+        dist = math.hypot(dx, dy)  # 目標までの距離を計算
         if dist != 0:
-            self.preview_vx = (dx / dist) * speed
-            self.preview_vy = (dy / dist) * speed
-        else:
+            self.preview_vx = (dx / dist) * speed  # 発射時のx方向の速度を計算
+            self.preview_vy = (dy / dist) * speed  # 発射時のy方向の速度を計算
+        else:  # 0除算回避
             self.preview_vx, self.preview_vy = 0, speed
-
+        # 画面下部に到達するまでのフレーム数を計算
         if self.preview_vy > 0:
             t_y = (HEIGHT - self.start_pos[1]) / self.preview_vy
         else:
-            t_y = float('inf')  # ゼロ除算を防ぐ
+            t_y = float('inf')  # 0除算を防ぐ
+        # 画面端に到達するまでのフレーム数を計算
         if self.preview_vx > 0:
             t_x = (x_right_outline - self.start_pos[0]) / self.preview_vx
         elif self.preview_vx < 0:
             t_x = (x_left_outline - self.start_pos[0]) / self.preview_vx
         else:
-            t_x = float('inf')  # 真下
+            t_x = float('inf')  # 0除算を防ぐ
 
-        t = min(t_x, t_y)
+        t = min(t_x, t_y)  # 先に下部、端に到達するものを取得
 
         self.line_end = (
             self.start_pos[0] + self.preview_vx * t,
@@ -753,16 +752,18 @@ class BossPreviewBullet(BossBaseBullet):
         self.vy = 0
 
         self.tmr = 0
-        self.preview_time = 60
+        self.preview_time = 60  # 発射されるまでの時間（予告線を表示する時間）
 
     def update(self):
         self.tmr += 1
+        # 予告時間を過ぎたら弾を発射させる
         if self.tmr == self.preview_time:
             if self.sound_judge:
                 self.bullet_snd.play()  # 効果音再生
-            self.vx = self.preview_vx
-            self.vy = self.preview_vy
+            self.vx = self.preview_vx  # x方向の速度を設定
+            self.vy = self.preview_vy  # y方向の速度を設定
 
+        # 速度を座標に加算
         self.exact_x += self.vx
         self.exact_y += self.vy
 
@@ -773,11 +774,15 @@ class BossPreviewBullet(BossBaseBullet):
         予告線を表示させるもの
         引数：screen（画面Surface）
         """
+      
         limit_time = self.preview_time - 20
+        # 発射の20フレーム前まで予告線を表示
         if self.tmr < limit_time:
-            cycle = limit_time // 3
+            cycle = limit_time // 3  # 点滅の周期
+            # 周期ごとに効果音を発生
             if self.tmr % cycle == 0 and self.sound_judge:
                 self.line_snd.play()  # 効果音再生
+            # 周期の半分は予告線を表示
             if (self.tmr % cycle) < (cycle // 2):
                 pg.draw.line(screen, GRAY, self.start_pos, self.line_end, 1)
     
@@ -814,7 +819,7 @@ def game_over(screen: pg.Surface):
     screen.blit(txt, txt_rect)
     snd.play()  # 効果音再生
     pg.display.update()
-    time.sleep(2)
+    pg.time.wait(2000)
 
 
 def game_clear(screen: pg.Surface):
@@ -829,7 +834,7 @@ def game_clear(screen: pg.Surface):
     screen.blit(txt, txt_rect)
     snd.play()  # 効果音再生
     pg.display.update()
-    time.sleep(2)
+    pg.time.wait(2000)
 
 # ===↑関数定義↑===
 
@@ -958,7 +963,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
         enemy_lifes.add(BossLife(coors[1]))
     tmr = 0  # 1フレームごとのカウント
     # bool型定義(判定)
-    space_judge = False
+    space_judge = False  # プレイヤーの攻撃フラグ
 
     while True:
         for event in pg.event.get():
@@ -985,7 +990,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             player_bullet = BossPlayerBullet(player_rct, 10)
             player_bullets.add(player_bullet)
             player_bullet_snd.play()  # 効果音再生
-            space_judge = False
+            space_judge = False  # 連続での発射を防ぐ
         player_bullets.update()
         # 弾処理(敵)
         # 予告弾
@@ -1012,7 +1017,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             linear_bullet_snd.play()  # 効果音再生
             enemy_bullets.add(linear_bullet)
         # 曲線弾
-        if tmr % 60 in [0, 5, 10]:  # 三連で発射
+        if tmr % 60 in [3, 8, 11]:  # 三連で発射
             curve_bullet = BossCurveBullet(player_rct, enemy_rct, 6, NEON_PINK)
             curve_bullet_snd.play()  # 効果音再生
             enemy_bullets.add(curve_bullet)
@@ -1023,7 +1028,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
             if hasattr(bullet, "draw_preview_line"):  # もしbulletが"draw_preview_line"を持っていれば予告線を表示する
                 bullet.draw_preview_line(screen)
         # ダメージ処理(プレイヤー)
-        if pg.sprite.spritecollide(player.sprite, enemy_bullets, True, pg.sprite.collide_circle):
+        if pg.sprite.spritecollide(player.sprite, enemy_bullets, True, pg.sprite.collide_circle):  # 円での当たり判定
             if len(player_lifes) > 0:
                 player_lifes.sprites()[0].kill()
             if len(player_lifes) == 0:  # 負け
@@ -1031,7 +1036,7 @@ def lastbattle(screen: pg.Surface, clock: pg.time.Clock):
                 game_over(screen)  # ゲームオーバー画面表示
                 break
         # ダメージ処理(敵)
-        if pg.sprite.spritecollide(enemy.sprite, player_bullets, True, pg.sprite.collide_circle):
+        if pg.sprite.spritecollide(enemy.sprite, player_bullets, True, pg.sprite.collide_circle):  # 円での当たり判定
             if len(enemy_lifes) > 0:
                 enemy_lifes.sprites()[0].kill()
             if len(enemy_lifes) == 0:  # 勝ち
