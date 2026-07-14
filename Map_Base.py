@@ -405,8 +405,8 @@ class Player(pg.sprite.Sprite):
         引数：初期配置の中心座標tuple(x, y), GameMapのインスタンス
         """
         super().__init__()
-        self.image = pg.Surface((40, 40))  # 現時点仮のプレイヤー画像
-        self.image.fill(GREEN)  # 現時点仮のプレイヤー
+        self.image = pg.image.load("img/player.png").convert_alpha()  # プレイヤー画像
+        self.image = pg.transform.scale(self.image, (52, 52))
         self.rect = self.image.get_rect(center = coor)  # rect.centerにcoorを設定
         self.game_map = game_map
         self.row, self.col = self.game_map.get_id(coor[0], coor[1])  # プレイヤーのいるマスのidを取得
